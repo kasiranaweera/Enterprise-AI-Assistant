@@ -62,3 +62,18 @@ DEMO_USERS: dict[str, dict] = {
 
 def has_permission(role: Role, permission: Permission) -> bool:
     return permission in ROLE_PERMISSIONS.get(role, set())
+
+
+def get_all_users() -> list[dict]:
+    return [
+        {"username": u, "role": info["role"].value if isinstance(info["role"], Role) else info["role"], "department": info["department"]}
+        for u, info in DEMO_USERS.items()
+    ]
+
+
+def get_roles_permissions_matrix() -> dict[str, list[str]]:
+    return {
+        role.value: sorted([p.value for p in perms])
+        for role, perms in ROLE_PERMISSIONS.items()
+    }
+

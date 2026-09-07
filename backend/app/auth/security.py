@@ -60,3 +60,26 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ) -> User:
     return decode_token(credentials.credentials)
+
+
+def require_role(allowed_roles: list[Role]):
+    async def _role_checker(user: User = Depends(get_current_user)) -> User:
+        if user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Role '{user.role.value}' is not authorized for this resource.",
+            )
+        return user
+    return _role_checker
+
+
+def add_or_update_user(username: str, password: str, role: Role, department: str = "general") -> User:
+    DEMO_USERS[username] = {"password": password, "role": role, "department": department}
+    _HASHED_USERS[username] = {
+        "password": password,
+        "role": role,
+        "department": department,
+        "password_hash": pwd_context.hash(password),
+    }
+    return User(username=username, role=role, department=department)
+
