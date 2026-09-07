@@ -20,7 +20,7 @@ assistant.
 
 ```bash
 cp .env.example .env
-# edit .env: at minimum set ANTHROPIC_API_KEY or OPENAI_API_KEY.
+# edit .env: at minimum set GROQ_API_KEY (default provider), or ANTHROPIC_API_KEY / OPENAI_API_KEY.
 # Everything else (Pinecone, LangSmith) is optional — see "Zero-key mode" below.
 
 docker compose up --build
@@ -63,8 +63,22 @@ all**: no LLM key falls back to a deterministic offline stub model,
 no Pinecone key falls back to an in-memory vector store, no LangSmith
 key simply skips tracing. This is intentional so a reviewer can clone
 the repo and see the whole architecture work mechanically before
-spending anything on LLM calls. Set `ANTHROPIC_API_KEY` or
-`OPENAI_API_KEY` in `.env` to get real generated answers.
+spending anything on LLM calls. Set `GROQ_API_KEY` (default provider —
+free tier, fast Llama 3.3 inference), or `ANTHROPIC_API_KEY` /
+`OPENAI_API_KEY`, in `.env` to get real generated answers.
+
+### LLM provider
+
+Default is **Groq** (`LLM_PROVIDER=groq`, model `llama-3.3-70b-versatile`)
+— Groq's LPU inference is very low-latency, which suits the Agent
+Activity Panel's per-node streaming, and its free tier makes the demo
+cheap to reproduce. Anthropic Claude and OpenAI are wired in as
+first-class alternatives; switch by setting `LLM_PROVIDER` to
+`anthropic` or `openai` and supplying the matching key — no code
+changes needed anywhere else in the graph. If the configured
+provider's key is missing, the factory automatically falls back to
+whichever key *is* present (groq → openai → anthropic → offline stub),
+so a misconfigured `LLM_PROVIDER` never silently breaks the demo.
 
 ### Sanity-check the retrieval stack directly
 
@@ -119,6 +133,7 @@ bucket rate limiting, structured JSON logging, LangSmith tracing.
 | Knowledge Search Tool | `backend/app/tools/knowledge_search_tool.py` |
 | MCP Tool + dummy MCP server | `backend/app/mcp_server/server.py`, `backend/app/tools/mcp_client.py` |
 | Python Analysis Tool | `backend/app/tools/python_analysis_tool.py` |
+| LLM (any modern LLM, rationale documented) | `backend/app/agents/llm.py` — Groq (default), Anthropic, OpenAI, or offline stub, switchable via `LLM_PROVIDER` |
 | LangSmith tracing | `backend/app/agents/graph.py` (env wiring); automatic once `LANGCHAIN_API_KEY` is set |
 | Prompt injection / exfiltration / tool-abuse protection | `backend/app/guardrails/prompt_injection.py` |
 | Input validation | `backend/app/guardrails/validators.py` (`ChatRequest`, `validate_tool_params`) |
