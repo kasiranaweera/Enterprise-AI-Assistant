@@ -35,7 +35,7 @@ class GraphState(BaseModel):
     conversation_context: str = ""
 
     # Routing
-    intent: str = ""
+    intent: Optional[str] = ""
     plan: list[str] = Field(default_factory=list)
     next_agent: AgentName = "supervisor"
 

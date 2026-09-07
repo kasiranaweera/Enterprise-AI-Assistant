@@ -51,6 +51,18 @@ class HybridRetriever:
             cls._instance = cls()
         return cls._instance
 
+    def reindex(self) -> int:
+        """Reload chunks from disk and rebuild indices."""
+        self.chunks = load_all_chunks()
+        self.sparse_index = SparseIndex(self.chunks)
+        self.vector_store = get_vector_store()
+        if self.chunks:
+            texts = [c.text for c in self.chunks]
+            vectors = self.embedder.embed(texts)
+            self.vector_store.upsert(self.chunks, vectors)
+        return len(self.chunks)
+
+
     @staticmethod
     def _normalize(scores: list[float]) -> list[float]:
         if not scores:

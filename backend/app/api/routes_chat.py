@@ -50,6 +50,10 @@ async def _event_stream(request: ChatRequest, user: User):
         yield _sse({"type": "error", "detail": f"Rate limit exceeded. Retry after {retry_after:.1f}s"})
         return
 
+    if request.deep_research and user.role.value == "viewer":
+        yield _sse({"type": "error", "detail": "Deep/RLM research requires Analyst or Administrator role."})
+        return
+
     session = memory_store.get_or_create(
         request.session_id, user_context={"role": user.role.value, "department": user.department}
     )
@@ -62,7 +66,10 @@ async def _event_stream(request: ChatRequest, user: User):
         user_department=user.department,
         user_message=request.message,
         conversation_context=session.as_context_string(),
+        intent="research_task" if request.deep_research else "",
     )
+
+
 
     graph = get_compiled_graph()
     last_state: GraphState | None = None
@@ -120,3 +127,22 @@ async def chat_once(payload: ChatRequest, user: User = Depends(get_current_user)
     if final is None:
         raise HTTPException(status_code=500, detail="No response generated")
     return final
+
+
+@router.get("/memory/{session_id}")
+async def get_session_memory(session_id: str, user: User = Depends(get_current_user)):
+    session = memory_store.get_or_create(session_id)
+    return {
+        "session_id": session.session_id,
+        "raw_turns_count": len(session.raw_turns),
+        "raw_turns": [{"role": t.role, "content": t.content} for t in session.raw_turns],
+        "running_summary": session.running_summary,
+        "user_context": session.user_context,
+    }
+
+
+@router.delete("/memory/{session_id}")
+async def clear_session_memory(session_id: str, user: User = Depends(get_current_user)):
+    memory_store.clear(session_id)
+    return {"status": "cleared", "session_id": session_id}
+

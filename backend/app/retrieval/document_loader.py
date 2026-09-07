@@ -81,3 +81,52 @@ def load_all_chunks() -> list[Chunk]:
                 )
             )
     return chunks
+
+
+def list_documents() -> list[dict]:
+    """List metadata for all document files in DATA_DIR."""
+    docs = []
+    if not DATA_DIR.exists():
+        return docs
+    for path in sorted(DATA_DIR.glob("*.md")):
+        meta = _parse_filename(path)
+        docs.append({
+            "doc_id": path.stem,
+            "filename": path.name,
+            "title": meta.get("title", path.stem),
+            "department": meta.get("department", "general"),
+            "document_type": meta.get("document_type", "unknown"),
+            "access_level": meta.get("access_level", "internal"),
+            "created_date": meta.get("created_date", ""),
+            "size_bytes": path.stat().st_size,
+        })
+    return docs
+
+
+def save_document(
+    content: str,
+    title: str,
+    department: str = "general",
+    document_type: str = "guideline",
+    access_level: str = "internal",
+    created_date: str = "2025-01-01",
+) -> str:
+    """Save a new document markdown file to DATA_DIR."""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", title.lower()).strip("-") or "document"
+    filename = f"{document_type}__{department}__{access_level}__{created_date}__{slug}.md"
+    target_path = DATA_DIR / filename
+    target_path.write_text(content, encoding="utf-8")
+    return target_path.stem
+
+
+def delete_document(doc_id: str) -> bool:
+    """Delete a document markdown file matching doc_id."""
+    if not DATA_DIR.exists():
+        return False
+    for path in DATA_DIR.glob("*.md"):
+        if path.stem == doc_id:
+            path.unlink()
+            return True
+    return False
+
