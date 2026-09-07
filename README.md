@@ -16,6 +16,8 @@ assistant.
 
 ## 1. Quick Start
 
+> **Detailed Guide:** See [`docs/SETUP_GUIDE.md`](docs/SETUP_GUIDE.md) for step-by-step setup with Groq, test credentials, and demo recording verification.
+
 ### Option A — Docker Compose (recommended)
 
 ```bash
@@ -97,7 +99,13 @@ pytest backend/tests -v
 ## 2. Architecture
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full
-diagram and component-by-component write-up. Summary:
+diagram and component-by-component write-up. Visual architecture diagrams are also provided in `docs/`:
+- [High-Level Component Diagram](docs/High-level%20component%20diagram.png)
+- [Agent Graph Control Flow](docs/Agent%20graph%20control%20flow.png)
+- [Recursive Language Model (RLM)](docs/Recursive%20Language%20Model%20(RLM).png)
+- [RBAC Enforcement Point](docs/RBAC%20enforcement%20point.png)
+
+Summary:
 
 ```
 Streamlit UI  ──(SSE)──►  FastAPI  ──►  LangGraph
@@ -256,6 +264,8 @@ scripts/
   ingest_documents.py
 docs/
   ARCHITECTURE.md
+  SETUP_GUIDE.md
+  *.png           # Architecture & flow diagrams
 docker-compose.yml
 Dockerfile.backend / Dockerfile.frontend
 requirements.txt

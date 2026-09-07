@@ -32,14 +32,22 @@ if "session_id" not in st.session_state:
 
 # ------------------------------------------------ Login Screen ----------------
 if st.session_state.token is None:
-    st.title("🏦 Northbridge Commercial Bank — Internal AI Assistant")
-    st.subheader("Secure Employee Sign-In")
-    st.caption("Role-Based Access Control (RBAC) Demonstration")
+    col_left, col_center, col_right = st.columns([1, 1.4, 1])
 
-    col_login, col_matrix = st.columns([1, 1.2])
+    with col_center:
+        st.markdown(
+            """
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <h1 style="margin-bottom: 0.25rem;">🏦 Northbridge Commercial Bank</h1>
+                <h3 style="margin-top: 0; margin-bottom: 0.5rem; font-weight: normal;">Internal AI Assistant</h3>
+                <h4 style="color: gray; font-weight: normal; margin-bottom: 0.25rem;">Secure Employee Sign-In</h4>
+                <p style="color: gray; font-size: 0.85rem;">Role-Based Access Control (RBAC) Demonstration</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-    with col_login:
-        st.markdown("### 🔐 Credentials")
+        st.markdown("<h3 style='text-align: center;'>🔐 Credentials</h3>", unsafe_allow_html=True)
         with st.form("login_form"):
             username = st.text_input("Username", value="analyst1")
             password = st.text_input("Password", type="password", value="analyst123")
@@ -70,32 +78,6 @@ if st.session_state.token is None:
             "- 📊 `analyst1` / `analyst123` (Analyst: RLM, analytics, MCP)\n"
             "- 🛡️ `admin1` / `admin123` (Administrator: full system control)"
         )
-
-    with col_matrix:
-        st.markdown("### 📋 Role Capability Matrix")
-        st.markdown(
-            """
-| Action | Viewer | Analyst | Administrator |
-| :--- | :---: | :---: | :---: |
-| 💬 Chat with AI | ✅ | ✅ | ✅ |
-| 🔎 Search documents | ✅ | ✅ | ✅ |
-| 📄 View retrieved documents | ✅ | ✅ | ✅ |
-| 📚 View conversation history | ✅ | ✅ | ✅ |
-| 🧠 Use conversational memory | ✅ | ✅ | ✅ |
-| 🔍 Advanced/RLM research | ❌ | ✅ | ✅ |
-| 📊 Python data analysis | ❌ | ✅ | ✅ |
-| 🔧 MCP tools | ❌ | ✅ | ✅ |
-| 📈 Analytics | ❌ | ✅ | ✅ |
-| 🛠️ Administrative tools | ❌ | ❌ | ✅ |
-| 👥 Manage users | ❌ | ❌ | ✅ |
-| 🔐 Manage roles/permissions | ❌ | ❌ | ✅ |
-| 📚 Manage knowledge base | ❌ | ❌ | ✅ |
-| ➕ Upload documents | ❌ | ❌ | ✅ |
-| 🗑️ Delete documents | ❌ | ❌ | ✅ |
-| ⚙️ System configuration | ❌ | ❌ | ✅ |
-| 📋 View system/audit logs | ❌ | ❌ | ✅ |
-            """
-        )
     st.stop()
 
 # ------------------------------------------------ Authenticated Header --------
@@ -115,36 +97,18 @@ header_col1, header_col2 = st.columns([4, 1])
 with header_col1:
     st.title("🏦 Northbridge Bank — AI Assistant")
     st.markdown(f"Signed in as **{username}** | Role: **{role_badge}** | Backend: `{BACKEND_URL}`")
-with header_col2:
-    st.write("")
-    if st.button("🚪 Sign Out", use_container_width=True):
-        st.session_state.token = None
-        st.session_state.role = None
-        st.session_state.username = None
-        st.rerun()
+# with header_col2:
+#     st.write("")
+#     if st.button("🚪 Sign Out", key="header_signout", use_container_width=True):
+#         st.session_state.token = None
+#         st.session_state.role = None
+#         st.session_state.username = None
+#         st.rerun()
 
 # ------------------------------------------------ Sidebar Controls ------------
 with st.sidebar:
     st.markdown(f"### 👤 {username}")
     st.markdown(f"**Permissions tier:** `{role}`")
-
-    with st.expander("ℹ️ Active Role Permissions"):
-        st.markdown(
-            f"""
-        **Role: {role.upper()}**
-        - Chat & QA: ✅
-        - Knowledge Search: ✅
-        - View Retrieved Docs: ✅
-        - Conversation History: ✅
-        - Conversational Memory: ✅
-        - Advanced RLM Research: {'✅' if role in ['analyst', 'administrator'] else '❌ (Requires Analyst+)'}
-        - Python Data Analysis: {'✅' if role in ['analyst', 'administrator'] else '❌ (Requires Analyst+)'}
-        - MCP Tools: {'✅' if role in ['analyst', 'administrator'] else '❌ (Requires Analyst+)'}
-        - Analytics: {'✅' if role in ['analyst', 'administrator'] else '❌ (Requires Analyst+)'}
-        - Admin Tools: {'✅' if role == 'administrator' else '❌ (Requires Admin)'}
-        - Knowledge Base Edit: {'✅' if role == 'administrator' else '❌ (Requires Admin)'}
-        """
-        )
 
     st.divider()
 
@@ -210,6 +174,22 @@ with st.sidebar:
         except Exception as e:
             st.error(f"Failed to reset memory: {e}")
 
+    st.divider()
+
+    # ⚙️ Settings
+    st.markdown("### ⚙️ Settings")
+    show_activity_panel = st.toggle(
+        "🔎 Agent Activity Panel",
+        value=False,
+        key="show_activity_panel",
+        help="Open real-time agent execution graph, retrieved chunks, and guardrails panel during chat.",
+    )
+    if st.button("🚪 Sign Out", key="sidebar_signout", use_container_width=True):
+        st.session_state.token = None
+        st.session_state.role = None
+        st.session_state.username = None
+        st.rerun()
+
 # Ensure active messages list exists
 if st.session_state.session_id not in st.session_state.sessions_messages:
     st.session_state.sessions_messages[st.session_state.session_id] = []
@@ -228,7 +208,11 @@ tabs = st.tabs(tab_names)
 # TAB 1: 💬 Chat with AI
 # ==============================================================================
 with tabs[0]:
-    chat_col, activity_col = st.columns([2, 1])
+    if show_activity_panel:
+        chat_col, activity_col = st.columns([2, 1])
+    else:
+        chat_col = st.container()
+        activity_col = None
 
     with chat_col:
         st.subheader("💬 Assistant Chat")
@@ -244,35 +228,16 @@ with tabs[0]:
         else:
             st.caption("🔒 *Advanced / RLM Deep Research is available for Analyst & Administrator roles.*")
 
-        def format_citations(text: str) -> str:
-            import re
-            def _clean_chip(match):
-                raw_id = match.group(1)
-                parts = raw_id.split("__")
-                title = parts[-1].replace("-", " ").title() if len(parts) >= 5 else raw_id
-                return f" `[📄 {title}]`"
-            return re.sub(r"\[doc:([^\]]+)\]", _clean_chip, text)
+        messages_container = st.container()
 
-        # Display history
-        for msg in current_messages:
-            with st.chat_message(msg["role"]):
-                if msg["role"] == "assistant":
-                    st.markdown(format_citations(msg["content"]))
-                else:
-                    st.markdown(msg["content"])
-                if msg.get("citations"):
-                    with st.expander("📄 Retrieved Source Documents"):
-                        for c in msg["citations"]:
-                            st.markdown(f"- **`{c['doc_id']}`** (Hybrid relevance: `{c.get('hybrid_score', 0):.3f}`)")
+    activity_placeholder = None
+    if show_activity_panel and activity_col is not None:
+        with activity_col:
+            st.subheader("🔎 Agent Activity Panel")
+            activity_placeholder = st.empty()
 
-        user_input = st.chat_input("Ask about bank systems, incidents, payment gateways, runbooks...")
-
-
-    with activity_col:
-        st.subheader("🔎 Agent Activity Panel")
-        activity_placeholder = st.empty()
-
-        def render_activity(state: dict):
+    def render_activity(state: dict):
+        if activity_placeholder is not None:
             with activity_placeholder.container():
                 st.markdown(f"**Current node:** `{state.get('next_agent', '-')}`")
                 st.markdown(f"**Chunks retrieved:** `{state.get('retrieved_count', 0)}`")
@@ -294,10 +259,35 @@ with tabs[0]:
                 for e in state.get("activity_log", []):
                     st.markdown(f"- `[{e['node']}]` {e['event']}: {e.get('detail', '')}")
 
+    def format_citations(text: str) -> str:
+        import re
+        def _clean_chip(match):
+            raw_id = match.group(1)
+            parts = raw_id.split("__")
+            title = parts[-1].replace("-", " ").title() if len(parts) >= 5 else raw_id
+            return f" `[📄 {title}]`"
+        return re.sub(r"\[doc:([^\]]+)\]", _clean_chip, text)
+
+    # Render message history inside the messages container above the input
+    with messages_container:
+        for msg in current_messages:
+            with st.chat_message(msg["role"]):
+                if msg["role"] == "assistant":
+                    st.markdown(format_citations(msg["content"]))
+                else:
+                    st.markdown(msg["content"])
+                if msg.get("citations"):
+                    with st.expander("📄 Retrieved Source Documents"):
+                        for c in msg["citations"]:
+                            st.markdown(f"- **`{c['doc_id']}`** (Hybrid relevance: `{c.get('hybrid_score', 0):.3f}`)")
+
+    # User input always pinned at the bottom of the chat tab
+    user_input = st.chat_input("Ask about bank systems, incidents, payment gateways, runbooks...")
+
     # Process user question
     if user_input:
         current_messages.append({"role": "user", "content": user_input})
-        with chat_col:
+        with messages_container:
             with st.chat_message("user"):
                 st.markdown(user_input)
 
@@ -344,11 +334,10 @@ with tabs[0]:
 
         if final_answer:
             current_messages.append({"role": "assistant", "content": final_answer, "citations": citations})
-            with chat_col:
+            with messages_container:
                 with st.chat_message("assistant"):
                     st.markdown(format_citations(final_answer))
                     if citations:
-
                         with st.expander("📄 Retrieved Source Documents"):
                             for c in citations:
                                 st.markdown(f"- **`{c['doc_id']}`** (Hybrid score: `{c.get('hybrid_score', 0):.3f}`)")
