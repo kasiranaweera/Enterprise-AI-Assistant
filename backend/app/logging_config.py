@@ -48,6 +48,27 @@ def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(name)
 
 
+from collections import deque
+
+_AUDIT_LOGS: deque[dict] = deque(maxlen=300)
+
+
 def log_event(logger: logging.Logger, message: str, **fields: Any) -> None:
     """Helper for structured 'event' style logs, e.g. agent transitions."""
     logger.info(message, extra={"extra_fields": fields})
+    ctx = request_context.get()
+    entry = {
+        "ts": round(time.time(), 3),
+        "event": message,
+        "user": ctx.get("user", fields.get("user", "system")),
+        "role": ctx.get("role", fields.get("role", "system")),
+        "session_id": ctx.get("session_id", fields.get("session", fields.get("session_id", "-"))),
+        "details": fields,
+    }
+    _AUDIT_LOGS.appendleft(entry)
+
+
+def get_audit_logs(limit: int = 50) -> list[dict]:
+    """Returns the most recent audit logs up to limit."""
+    return list(_AUDIT_LOGS)[:limit]
+

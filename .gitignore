@@ -8,3 +8,4 @@ venv/
 .streamlit/
 *.log
 .DS_Store
+SampleTest.pdf

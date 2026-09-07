@@ -9,8 +9,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from backend.app.api.routes_admin import router as admin_router
 from backend.app.api.routes_auth import router as auth_router
 from backend.app.api.routes_chat import router as chat_router
+from backend.app.api.routes_tools import router as tools_router
 from backend.app.config import get_settings
 from backend.app.logging_config import configure_logging, get_logger
 
@@ -29,6 +31,9 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(chat_router)
+app.include_router(tools_router)
+app.include_router(admin_router)
+
 
 
 @app.get("/health")
