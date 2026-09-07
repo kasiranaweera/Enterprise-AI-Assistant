@@ -17,9 +17,10 @@ langchain-community==0.3.5
 langgraph==0.2.45
 langsmith==0.1.140
 
-# LLM providers (pick what you have keys for; both wired up)
+# --- LLM providers (pick what you have keys for; both wired up) ---
 langchain-openai==0.2.6
 langchain-anthropic==0.2.4
+langchain-groq==0.2.1            # Groq: fast inference for open-source models (Llama, Mixtral, Gemma...)
 
 # --- Retrieval ---
 rank-bm25==0.2.2
@@ -35,3 +36,7 @@ requests==2.32.3
 python-dotenv==1.0.1
 tenacity==9.0.0
 orjson==3.10.7
+
+# --- Testing ---
+pytest>=8.4.0
+pytest-asyncio>=1.4.0

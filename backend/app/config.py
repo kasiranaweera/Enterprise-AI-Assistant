@@ -5,17 +5,33 @@ All environment-driven settings live here so every module imports
 one source of truth instead of scattering os.getenv() calls.
 """
 from functools import lru_cache
+from pathlib import Path
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+ENV_PATH = PROJECT_ROOT / ".env"
+
+# Explicitly load into os.environ for libraries (LangChain/LangSmith, etc.)
+if ENV_PATH.exists():
+    load_dotenv(ENV_PATH)
+else:
+    load_dotenv()
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(str(ENV_PATH), ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     # LLM
     llm_provider: str = "anthropic"
     llm_model: str = "claude-sonnet-4-6"
     openai_api_key: str = ""
     anthropic_api_key: str = ""
+    groq_api_key: str = ""
 
     # Vector DB
     pinecone_api_key: str = ""
