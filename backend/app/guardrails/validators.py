@@ -26,6 +26,8 @@ DISALLOWED_OUTPUT_PATTERNS = [
 class ChatRequest(BaseModel):
     session_id: str = Field(..., min_length=1, max_length=128)
     message: str = Field(..., min_length=1, max_length=MAX_QUERY_LEN)
+    deep_research: bool = False
+
 
     @field_validator("message")
     @classmethod
@@ -64,6 +66,8 @@ def check_output_guardrails(answer: str, citations: list[dict]) -> tuple[str, li
         if re.search(pattern, answer, re.IGNORECASE):
             warnings.append(f"brand_safety_pattern_matched:{pattern}")
             answer = re.sub(pattern, "[redacted]", answer, flags=re.IGNORECASE)
+
+    answer = answer.replace("【doc:", "[doc:").replace("】", "]")
 
     if "[doc:" in answer:
         cited_ids = set(re.findall(r"\[doc:([\w\-]+)\]", answer))

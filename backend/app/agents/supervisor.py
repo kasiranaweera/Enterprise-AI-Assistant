@@ -53,12 +53,14 @@ def run_supervisor(state: GraphState) -> GraphState:
         state.log("supervisor", "blocked", reason or "")
         return state
 
-    is_research = _looks_like_research_task(state.user_message)
+    allow_research = state.user_role in ("analyst", "administrator")
+    is_research = (state.intent == "research_task" or _looks_like_research_task(state.user_message)) and allow_research
     state.intent = "research_task" if is_research else "knowledge_qa"
     state.plan = (
         ["retrieval", "research", "response"] if is_research else ["retrieval", "response"]
     )
     state.next_agent = "retrieval"
+
 
     log_event(
         logger, "intent_classified", session=state.session_id, intent=state.intent, plan=state.plan
