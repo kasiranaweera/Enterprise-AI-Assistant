@@ -59,3 +59,21 @@ class RateLimiterRegistry:
 
 
 rate_limiter_registry = RateLimiterRegistry()
+
+
+async def enforce_rate_limit(user) -> None:
+    """FastAPI dependency: raises 429 with a Retry-After-style detail if
+    the caller's bucket is empty. Applied to every tool-invocation route
+    (search, python-analysis, MCP, analytics) as well as chat, so a
+    single "check rate limit at the top of chat" isn't the only gate —
+    the spec calls out per-user limits with graceful error handling
+    across tool execution generally, not just the chat endpoint.
+    """
+    from fastapi import HTTPException, status
+
+    allowed, retry_after = await rate_limiter_registry.check(user.username)
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded. Retry after {retry_after:.1f}s",
+        )
