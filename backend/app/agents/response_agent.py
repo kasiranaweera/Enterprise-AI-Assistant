@@ -8,6 +8,7 @@ output guardrail can verify every citation actually corresponds to a
 retrieved document (no hallucinated citations).
 """
 from backend.app.agents.llm import get_llm
+from backend.app.agents.resilient_invoke import safe_invoke
 from backend.app.agents.state import GraphState
 from backend.app.guardrails.validators import check_output_guardrails
 from backend.app.logging_config import get_logger, log_event
@@ -40,10 +41,16 @@ def run_response(state: GraphState) -> GraphState:
     llm = get_llm()
 
     prompt = _build_prompt(state)
-    result = llm.invoke(prompt)
-    raw_answer = getattr(result, "content", str(result))
+    llm_result = safe_invoke(llm, prompt, node="response", session_id=state.session_id)
+    raw_answer = llm_result.content
 
-    safe_answer, warnings = check_output_guardrails(raw_answer, state.retrieved_chunks)
+    if llm_result.degraded:
+        # Don't run citation/hallucination checks against a canned outage
+        # message — there's nothing to verify, and it would just add a
+        # confusing "no citations found" warning on top of the real issue.
+        safe_answer, warnings = raw_answer, ["llm_provider_unavailable"]
+    else:
+        safe_answer, warnings = check_output_guardrails(raw_answer, state.retrieved_chunks)
     state.guardrail_warnings.extend(warnings)
     state.final_answer = safe_answer
     state.citations = [

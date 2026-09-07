@@ -31,6 +31,7 @@ payment-outage reports and find recurring root causes) without
 requiring the entire corpus to fit in a single context window.
 """
 from backend.app.agents.llm import get_llm
+from backend.app.agents.resilient_invoke import safe_invoke
 from backend.app.agents.state import GraphState
 from backend.app.logging_config import get_logger, log_event
 
@@ -69,8 +70,7 @@ def _summarize_batch(llm, task: str, batch: list[dict], batch_index: int) -> str
         f"document excerpts *only as it relates to*: \"{task}\".\n"
         f"Cite sources inline like [doc:ID]. Be concise.\n\n{context}"
     )
-    result = llm.invoke(prompt)
-    return getattr(result, "content", str(result))
+    return safe_invoke(llm, prompt, node="research.batch").content
 
 
 def _aggregate(llm, task: str, batch_summaries: list[str]) -> str:
@@ -81,8 +81,7 @@ def _aggregate(llm, task: str, batch_summaries: list[str]) -> str:
         f"finding for the task: \"{task}\". Identify recurring themes / root "
         f"causes across batches if applicable. Keep citations [doc:ID] intact.\n\n{joined}"
     )
-    result = llm.invoke(prompt)
-    return getattr(result, "content", str(result))
+    return safe_invoke(llm, prompt, node="research.aggregate").content
 
 
 def run_research(state: GraphState) -> GraphState:

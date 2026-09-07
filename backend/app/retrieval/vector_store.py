@@ -14,9 +14,15 @@ see "internal" and "restricted".
 import numpy as np
 
 from backend.app.config import get_settings
+from backend.app.logging_config import get_logger
 from backend.app.retrieval.document_loader import Chunk
 
 settings = get_settings()
+logger = get_logger("retrieval.vector_store")
+
+
+class VectorStoreUnavailableError(Exception):
+    """Raised when the configured vector store backend cannot serve a request."""
 
 ACCESS_BY_ROLE = {
     "viewer": {"internal"},
@@ -81,14 +87,30 @@ class PineconeVectorStore:
                 metric="cosine",
                 spec=ServerlessSpec(cloud="aws", region=settings.pinecone_environment),
             )
+            self._dimension = 1536
+        else:
+            desc = self._pc.describe_index(settings.pinecone_index_name)
+            self._dimension = getattr(desc, "dimension", 1536)
         self._index = self._pc.Index(settings.pinecone_index_name)
+
+    def _fit_vector(self, vec: np.ndarray | list[float]) -> list[float]:
+        v = np.asarray(vec, dtype=np.float32).ravel()
+        if len(v) < self._dimension:
+            v = np.pad(v, (0, self._dimension - len(v)))
+        elif len(v) > self._dimension:
+            v = v[: self._dimension]
+        return v.tolist()
 
     def upsert(self, chunks: list[Chunk], vectors: np.ndarray) -> None:
         by_ns: dict[str, list] = {}
         for chunk, vec in zip(chunks, vectors):
             ns = chunk.metadata.get("department", "general")
             by_ns.setdefault(ns, []).append(
-                {"id": chunk.chunk_id, "values": vec.tolist(), "metadata": {**chunk.metadata, "text": chunk.text}}
+                {
+                    "id": chunk.chunk_id,
+                    "values": self._fit_vector(vec),
+                    "metadata": {**chunk.metadata, "text": chunk.text},
+                }
             )
         for ns, items in by_ns.items():
             self._index.upsert(vectors=items, namespace=ns)
@@ -108,7 +130,7 @@ class PineconeVectorStore:
             flt["document_type"] = document_type
 
         resp = self._index.query(
-            vector=query_vector.tolist(),
+            vector=self._fit_vector(query_vector),
             top_k=top_k,
             namespace=namespace,
             filter=flt or None,
@@ -127,7 +149,54 @@ class PineconeVectorStore:
         return results
 
 
+class ResilientVectorStore:
+    """Wraps PineconeVectorStore and transparently falls back to an
+    in-memory LocalVectorStore on ANY failure — connection errors, auth
+    errors, timeouts, or the index/service being unavailable.
+
+    This is what turns "Vector DB failures" (a required error-handling
+    scenario in the spec) into graceful degradation instead of a 500:
+    once a failure is seen, we log it once, flip to local, and keep the
+    session usable for the rest of the request/process rather than
+    retrying a dead backend on every call.
+    """
+
+    def __init__(self):
+        self._local = LocalVectorStore()
+        self._pinecone: PineconeVectorStore | None = None
+        self._pinecone_failed = False
+        try:
+            self._pinecone = PineconeVectorStore()
+        except Exception as exc:  # noqa: BLE001 - any backend failure degrades gracefully
+            logger.warning("pinecone_init_failed", extra={"error": str(exc)})
+            self._pinecone_failed = True
+
+    @property
+    def degraded(self) -> bool:
+        return self._pinecone_failed
+
+    def upsert(self, chunks: list[Chunk], vectors: np.ndarray) -> None:
+        # Always mirror into local store so retrieval keeps working even
+        # if Pinecone fails mid-session (e.g. after a successful init).
+        self._local.upsert(chunks, vectors)
+        if self._pinecone is not None and not self._pinecone_failed:
+            try:
+                self._pinecone.upsert(chunks, vectors)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("pinecone_upsert_failed", extra={"error": str(exc)})
+                self._pinecone_failed = True
+
+    def query(self, *args, **kwargs) -> list[tuple[Chunk, float]]:
+        if self._pinecone is not None and not self._pinecone_failed:
+            try:
+                return self._pinecone.query(*args, **kwargs)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("pinecone_query_failed_falling_back", extra={"error": str(exc)})
+                self._pinecone_failed = True
+        return self._local.query(*args, **kwargs)
+
+
 def get_vector_store():
     if settings.pinecone_api_key:
-        return PineconeVectorStore()
+        return ResilientVectorStore()
     return LocalVectorStore()
